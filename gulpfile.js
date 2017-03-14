@@ -17,9 +17,11 @@ const sourcemaps = require('gulp-sourcemaps');
 const gulpif = require('gulp-if');
 const notify = require('gulp-notify');
 const runSequence =  require('run-sequence');
-const browserSync = require('browser-sync');
-const reload = browserSync.reload;
+const browserSync = require('browser-sync').create();
 const changed = require('gulp-changed');
+const debug = require('gulp-debug');
+const newer = require('gulp-newer');
+
 
 // pug
 const pug = require('gulp-pug');
@@ -52,7 +54,7 @@ const imagemin = require('gulp-imagemin');
 const spritesmith = require('gulp.spritesmith');
 
 // Path
-var path = {
+const path = {
   build: {
     html: 'build/',
     js: 'build/js/',
@@ -60,7 +62,7 @@ var path = {
     img: 'build/img/',
     fonts: 'build/fonts/',
     pngSprites: 'src/img/',
-    pngSpritesCss: 'src/css/partials/abstracts/',
+    pngSpritesCss: 'src/less/partials/abstracts/',
     deploy: 'build/**/*'
   },
   src: {
@@ -75,9 +77,9 @@ var path = {
     browserify: 'src/js/*.js'
   },
   watch: {
-    html: 'src/html/**/*.pug',
+    pug: 'src/html/**/*.pug',
     js: 'src/js/**/*.js',
-    css: 'src/css/**/*.scss',
+    less: 'src/less/**/*.less',
     img: 'src/img/*.*',
     fonts: 'src/fonts/**/*.*',
     pngSprites: 'src/img/png-sprite/*.png'
@@ -89,6 +91,7 @@ var path = {
 gulp.task('pug', function() {
   return gulp.src(path.src.html)
     .pipe(plumber({ errorHandler: onError }))
+    // { errorHandler: onError }
     // .pipe(gulpif(devBuild, changed(path.build.html, {extension: '.html'})))
     // .pipe(gulpif(global.isWatching, cached('pug')))
     // .pipe(pugInheritance({basedir: path.src.htmlDir}))
@@ -100,25 +103,25 @@ gulp.task('pug', function() {
       indent_size: 2
     }))
     .pipe(gulp.dest(path.build.html))
-    .pipe(reload({stream: true}));
 })
 
 // Compilation sass
 gulp.task('less', function () {
-  return gulp.src(path.src.css)
-    .pipe(sourcemaps.init())
+  return gulp.src(path.src.less)
+    // .pipe(debug({title: 'src'})) 
     .pipe(plumber({ errorHandler: onError }))
+    // .pipe(debug({title: 'plumber'}))
+    .pipe(sourcemaps.init())
     .pipe(less())
     .pipe(postcss([
-      autoprefixer({browsers: ['last 5 version']}),
-      mqpacker
+      autoprefixer({ browsers: ['last 5 version'] }),
+      mqpacker({ sort: true }),
     ]))
     .pipe(sourcemaps.write('/'))
     .pipe(gulp.dest(path.build.css))
     .pipe(cleancss())
     .pipe(rename('style.min.css'))
     .pipe(gulp.dest(path.build.css))
-    .pipe(reload({stream: true}));
 });
 
 // Compilation js v2 
@@ -131,41 +134,44 @@ gulp.task('js', function() {
     .pipe(uglify())
     .pipe(sourcemaps.write('/'))
     .pipe(gulp.dest(path.build.js))
-    .pipe(reload({stream: true}));
 });
 
 // Optimization images
 gulp.task('img', function () {
   return gulp.src(path.src.img)
+    .pipe(newer(path.build.img))
     .pipe(gulpif(devBuild, changed(path.build.img)))
     .pipe(gulpif(!devBuild, imagemin()))
     .pipe(gulp.dest(path.build.img))
-    .pipe(reload({stream: true}));
+    // .pipe(reload({stream: true}));
 });
 
 // Creation png-sprites
 gulp.task('png-sprites', function () {
-  var spriteData =
-    gulp.src(path.src.pngSprites)
-      .pipe(spritesmith({
-        imgName: 'png-sprite.png',
-        imgPath: '../img/png-sprite.png',
-        padding: 1,
-        cssFormat: 'less_maps',
-        algorithm: 'binary-tree',
-        cssName: '_png-sprite.less',
-        cssFormat: 'less',
-        cssVarMap: function(sprite) {
-          sprite.name = 's-' + sprite.name
-        }
-      }));
-  spriteData.img.pipe(gulp.dest(path.build.pngSprites));
-  spriteData.css.pipe(gulp.dest(path.build.pngSpritesCss));
+  var spriteData = gulp.src(path.src.pngSprites)
+    .pipe(spritesmith({
+      imgName: 'png-sprite.png',
+      imgPath: '../img/png-sprite.png',
+      padding: 1,
+      cssFormat: 'less',
+      algorithm: 'binary-tree',
+      cssName: '_png-sprite.less'
+      // cssVarMap: function(sprite) {
+      //   sprite.name = 's-' + sprite.name
+      // }
+    }));
+
+  spriteData.img
+    .pipe(gulp.dest(path.build.pngSprites));
+
+  return spriteData.css
+    .pipe(gulp.dest(path.build.pngSpritesCss));
 });
 
 // Copying fonts
 gulp.task('fonts', function() {
   return gulp.src(path.src.fonts)
+    .pipe(newer(path.build.fonts))
     .pipe(gulp.dest(path.build.fonts))
 });
 
@@ -175,12 +181,20 @@ gulp.task('clean', function () {
 });
 
 // Overall build
-gulp.task('build', function (cb) {
-  runSequence('clean', ['pug', 'png-sprites', 'img', 'less', 'js', 'fonts'], cb);
+gulp.task('build', gulp.series('clean', gulp.parallel('png-sprites', 'pug', 'fonts', 'js' , gulp.parallel('img', 'less'))));
+
+
+// Overall watch
+gulp.task('watch', function(){
+  gulp.watch(path.watch.pngSprites, gulp.series('png-sprites'));
+  gulp.watch(path.watch.pug, gulp.series('pug'));
+  gulp.watch(path.watch.less, gulp.series('less'));
+  gulp.watch(path.watch.img, gulp.series('img'));
+  gulp.watch(path.watch.js, gulp.series('js'));
+  gulp.watch(path.watch.fonts, gulp.series('fonts'));
 });
 
-
-//Server config
+// Server config
 var config = {
   server: {
     baseDir: "./build"
@@ -191,43 +205,23 @@ var config = {
 };
 
 // Browser sync
-gulp.task('browserSync', ['build'], function() {
-  browserSync(config);
-});
+gulp.task('serve', function() {
+  browserSync.init(config);
 
-// Watching regime
-gulp.task('setWatch', function() {
-    global.isWatching = true;
-});
-// Overall watch
-gulp.task('watch', ['setWatch', 'browserSync'], function(){
-  gulp.watch([path.watch.html], function(event, cb) {
-    gulp.start('pug');
-  });
-  gulp.watch([path.watch.css], function(event, cb) {
-    gulp.start('sass');
-  });
-  gulp.watch([path.watch.js], function(event, cb) {
-    gulp.start('js');
-  });
-  gulp.watch([path.watch.img], function(event, cb) {
-    gulp.start('img');
-  });
-  gulp.watch([path.watch.pngSprites], function(event, cb) {
-    gulp.start('png-sprites');
-  });
-  gulp.watch([path.watch.fonts], function(event, cb) {
-    gulp.start('fonts');
-  });
+  // browserSync.reload;
+  browserSync.watch('build/**/*.*').on('change', browserSync.reload);
 });
 
 // Default task
-gulp.task('default', ['watch']);
+gulp.task('default', 
+  // gulp.series('build', 'serve', 'watch')
+  gulp.series('build', gulp.parallel('watch', 'serve'))
+);
 
 
 var onError = function(err) {
-    notify.onError({
-      title: "Error in " + err.plugin,
-    })(err);
-    this.emit('end');
+  notify.onError({
+    title: "Error in " + err.plugin,
+  })(err);
+  this.emit('end');
 }
