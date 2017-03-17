@@ -115,7 +115,12 @@ src
 │   └───scripts
 │       └───myscript.js
 │
-├───index.pug
-├───catalog.pug
-└───etc.pug
+└───img
+    ├───png-sprite
+    │   ├───file1.png
+    │   └───file2.png
+    │
+    ├───images1.jpg
+    └───images2.png
+
 ```
