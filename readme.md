@@ -15,13 +15,9 @@ git remote rm origin
 npm install
 ```
 
-Gulp 4 ставится локально. Для запуска проекта командой типа
+Gulp 4 ставится локально. Для запуска проекта:
 ```
-gulp <task>
-```
-вводим:
-```
-export PATH=./node_modules/.bin:../node_modules/.bin:../../node_modules/.bin:$PATH
+npm run gulp
 ```
 
 ## Запуск
@@ -48,7 +44,78 @@ gulp build
 gulp
 ```
 
-## Особая благодарность
+## Создаем новые БЭМ блоки
 
-- Илье Кантору за скринкаст по Gulp 4: [Скринкаст на youtube](https://www.youtube.com/playlist?list=PLDyvV36pndZFLTE13V4qNWTZbeipNhCgQ)
-- Константину Богданову за изначальную сборку на Gulp 3.9.1: [cotang](https://github.com/cotang)
+Находясь в корне проекта:
+```
+$ node newBlock.js blockName blockName2
+```
+
+Создаются папки по имени блоков с вложенными одноименными jade и less файлами
+```
+src/blocks/{blockName}/blockName.less
+src/blocks/{blockName}/blockName.jade
+```
+
+В диспетчере подключений jade прописываются инклюды созданных БЭМ блоков
+```
+src/html/connect/_blocks.jade
+```
+
+В диспетчере подключений less прописываются импорты Less файлов созданных БЭМ блоков
+```
+src/less/style.less
+```
+
+### Важно!
+При физическом удалении папки блока с диска, подключения этих блоков в style.less и _blocks.jade не удалаются. Удалить их вручную и перезапустить сборку.
+
+## Структура папок и файлов
+```
+src
+├───assets
+│   ├───bemtoJade (используется)
+│   └───bemtoPug (для перехода на Pug)
+│
+├───blocks
+│   └───blockName
+│       ├───blockName.jade
+│       └───blockName.less
+│ 
+├───html
+│   ├───connect
+│   │   └───_blocks.jade
+│   │
+│   ├───layout
+│   │   └───_layoutBase.jade
+│   │
+│   ├───pages
+│   │   └───index.jade
+│   │
+│   └───template
+│       └───_head.jade
+│
+├───less
+│   ├───common
+│   │   ├───_grid.less
+│   │   ├───_png-sprite.less
+│   │   └───_variables.less
+│   │
+│   ├───vendor
+│   │   ├───normalize.css
+│   │   └───bootstrap
+│   │
+│   └───style.less (диспетчер подключений .less файлов)
+│
+├───js
+│   ├───vendor
+│   │   ├───jQuery.js
+│   │   └───etc.js
+│   │
+│   └───scripts
+│       └───myscript.js
+│
+├───index.pug
+├───catalog.pug
+└───etc.pug
+```

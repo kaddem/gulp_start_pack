@@ -1,2 +1,14 @@
-@import 'partials/abstracts/_variables.less';
-@import 'partials/abstracts/_grid.less';
+// Подключаем файлы сторонних библиотек
+@import (inline) 'vendor/normalize.css';
+
+
+// Подключаем общие файлы стилей
+@import 'common/_variables.less';
+@import 'mixin/_clearfix.less';
+@import 'common/_png-sprite.less';
+@import 'common/_grid.less';
+
+// Подключаем стилевые файлы БЭМ-блоков
+// @import '../blocks/**/*.less';
+
+@import '../blocks/promo/promo.less';

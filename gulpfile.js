@@ -24,10 +24,13 @@ const newer = require('gulp-newer');
 
 
 // pug
-const pug = require('gulp-pug');
+// const pug = require('gulp-pug');
+const jade = require('gulp-jade');
+const jadeGlobbing = require('gulp-jade-globbing');
+
 const cached = require('gulp-cached');
 const progeny = require('gulp-progeny');
-const pugInheritance = require('gulp-pug-inheritance');
+// const pugInheritance = require('gulp-pug-inheritance');
 const filter = require('gulp-filter');
 const prettify = require('gulp-prettify');
 
@@ -62,13 +65,14 @@ const path = {
     img: 'build/img/',
     fonts: 'build/fonts/',
     pngSprites: 'src/img/',
-    pngSpritesCss: 'src/less/partials/abstracts/',
+    pngSpritesCss: 'src/less/common/',
     deploy: 'build/**/*'
   },
   src: {
     // html: ['src/html/**/*.pug', '!src/html/partials/abstracts/bemto/**/*.*'],
-    html: ['src/html/**/*.pug', '!src/html/**/_*.pug', '!src/html/partials/abstracts/bemto/**/*.*'],
-    htmlDir: './src/html/',
+    // html: ['src/html/**/*.pug', '!src/html/**/_*.pug', '!src/html/partials/abstracts/bemto/**/*.*'],
+    html: 'src/html/pages/*.jade',
+    htmlDir: './src/html/pages/',
     js: 'src/js/**/*.js',
     less: './src/less/*.less',
     img: ['src/img/**/*.*', '!src/img/png-sprite/*.*'],
@@ -77,9 +81,9 @@ const path = {
     browserify: 'src/js/*.js'
   },
   watch: {
-    pug: 'src/html/**/*.pug',
+    jade: ['src/html/**/*.jade', 'src/blocks/**/*.jade'],
     js: 'src/js/**/*.js',
-    less: 'src/less/**/*.less',
+    less: ['src/less/**/*.less', 'src/blocks/**/*.less'],
     img: 'src/img/*.*',
     fonts: 'src/fonts/**/*.*',
     pngSprites: 'src/img/png-sprite/*.png'
@@ -87,10 +91,17 @@ const path = {
   clean: './build'
 };
 
-// Compilation pug
-gulp.task('pug', function() {
+// Compilation jade
+var blocks = 'src\\blocks\\**\\*.jade';
+
+gulp.task('jade', function() {
   return gulp.src(path.src.html)
     .pipe(plumber({ errorHandler: onError }))
+    .pipe(jadeGlobbing({ 
+      // placeholder: {
+        // 'blocks': blocks,
+      // }
+    }))
     // { errorHandler: onError }
     // .pipe(gulpif(devBuild, changed(path.build.html, {extension: '.html'})))
     // .pipe(gulpif(global.isWatching, cached('pug')))
@@ -98,14 +109,14 @@ gulp.task('pug', function() {
     // .pipe(filter(function (file) {
     //   return !/\/_/.test(file.path) && !/^_/.test(file.relative);
     // }))
-    .pipe(pug())
+    .pipe(jade())
     .pipe(prettify({
       indent_size: 2
     }))
     .pipe(gulp.dest(path.build.html))
 })
 
-// Compilation sass
+// Compilation less
 gulp.task('less', function () {
   return gulp.src(path.src.less)
     // .pipe(debug({title: 'src'})) 
@@ -181,13 +192,13 @@ gulp.task('clean', function () {
 });
 
 // Overall build
-gulp.task('build', gulp.series('clean', gulp.parallel('png-sprites', 'pug', 'fonts', 'js' , gulp.parallel('img', 'less'))));
+gulp.task('build', gulp.series('clean', gulp.parallel('png-sprites', 'jade', 'fonts', 'js' , gulp.parallel('img', 'less'))));
 
 
 // Overall watch
 gulp.task('watch', function(){
   gulp.watch(path.watch.pngSprites, gulp.series('png-sprites'));
-  gulp.watch(path.watch.pug, gulp.series('pug'));
+  gulp.watch(path.watch.jade, gulp.series('jade'));
   gulp.watch(path.watch.less, gulp.series('less'));
   gulp.watch(path.watch.img, gulp.series('img'));
   gulp.watch(path.watch.js, gulp.series('js'));
@@ -211,6 +222,8 @@ gulp.task('serve', function() {
   // browserSync.reload;
   browserSync.watch('build/**/*.*').on('change', browserSync.reload);
 });
+
+
 
 // Default task
 gulp.task('default', 
